@@ -1,0 +1,67 @@
+// Prisma schema for DegreeBaba Hub.
+// Uses Supabase PostgreSQL (set DATABASE_URL in server/.env).
+//
+// Tables:
+//   - leads       : CRM data pushed via Pabbly webhook from Runo
+//   - query_log   : persisted query history (Phase 6)
+//   - connector_status : last-sync timestamps for each data source
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id          Int      @id @default(autoincrement())
+  runoLeadId  String   @unique @map("runo_lead_id")
+  name        String?
+  phone       String?
+  email       String?
+  source      String?
+  campaign    String?
+  status      String   @default("new")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model QueryLog {
+  id        Int      @id @default(autoincrement())
+  question  String
+  sources   String[] // array of source IDs queried
+  answer    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("query_log")
+}
+
+model ConnectorStatus {
+  id         Int       @id @default(autoincrement())
+  sourceId   String    @unique @map("source_id")
+  status     String    @default("unknown") // "live" | "expired" | "down"
+  lastSyncAt DateTime? @map("last_sync_at")
+  error      String?
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("connector_status")
+}
+
+model OAuthToken {
+  id           Int      @id @default(autoincrement())
+  provider     String   @unique // e.g. "google"
+  accessToken  String   @map("access_token") @db.Text
+  expiresAt    DateTime @map("expires_at")
+  refreshToken String?  @map("refresh_token") @db.Text
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("oauth_tokens")
+}
