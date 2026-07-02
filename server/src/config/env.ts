@@ -11,9 +11,13 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env from the server directory, then fall back to project root
+// Load .env — try multiple locations so the server works regardless of cwd.
+// 1. Project root (when started from server/ dir: ../  or repo root)
+// 2. Resolved from cwd() — works when tsx is invoked from any directory
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const schema = z.object({
   // ── Server ──────────────────────────────────────────
@@ -22,10 +26,13 @@ const schema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3001),
   HUB_API_KEY: z.string().min(1, 'HUB_API_KEY is required'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z.string().default('http://localhost:5173').transform(v => v.split('#')[0].trim()),
 
   // ── Anthropic ───────────────────────────────────────
   ANTHROPIC_API_KEY: z.string().optional(),
+  // Model IDs — override if your API key has access to specific models only
+  ANTHROPIC_ROUTER_MODEL: z.string().default('claude-3-haiku-20240307'),
+  ANTHROPIC_SYNTH_MODEL: z.string().default('claude-3-sonnet-20240229'),
 
   // ── Database ────────────────────────────────────────
   DATABASE_URL: z.string().optional(),

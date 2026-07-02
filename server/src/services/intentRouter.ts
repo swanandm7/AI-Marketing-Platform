@@ -3,8 +3,10 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { AppError } from '../errors/AppError';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 import type { IIntentRouter } from '../interfaces';
 import type { Intent, SourceId } from '../types';
+import e from 'express';
 
 const VALID_SOURCES: SourceId[] = ['gsc', 'ga4', 'ads', 'meta', 'linkedin', 'clarity', 'crm'];
 
@@ -28,7 +30,7 @@ export class IntentRouterService implements IIntentRouter {
     logger.info({ question }, 'Routing intent');
 
     const stream = this.client.messages.stream({
-      model: 'claude-opus-4-7',
+      model: env.ANTHROPIC_ROUTER_MODEL,
       max_tokens: 1024,
       system: [
         {
@@ -47,9 +49,15 @@ export class IntentRouterService implements IIntentRouter {
       throw new AppError(500, 'Intent router returned non-text response');
     }
 
+    let rawText = textBlock.text.trim();
+    const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match) {
+      rawText = match[1];
+    }
+
     let intent: Intent;
     try {
-      intent = JSON.parse(textBlock.text) as Intent;
+      intent = JSON.parse(rawText) as Intent;
     } catch {
       throw new AppError(500, `Intent router returned invalid JSON: ${textBlock.text.slice(0, 120)}`);
     }

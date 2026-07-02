@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { AppError } from '../errors/AppError';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 import type { ISynthesiser } from '../interfaces';
 import type { ConnectorResult, SynthesisResult, Intent, ChartSpec, DataTableSpec } from '../types';
 
@@ -54,9 +55,8 @@ export class SynthesiserService implements ISynthesiser {
     const userMessage = `Question: ${question}\n\nRaw data:\n${JSON.stringify(results, null, 2)}`;
 
     const stream = this.client.messages.stream({
-      model: 'claude-opus-4-7',
+      model: env.ANTHROPIC_SYNTH_MODEL,
       max_tokens: 4096,
-      thinking: { type: 'adaptive' },
       system: [
         {
           type: 'text',

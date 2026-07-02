@@ -11,44 +11,50 @@ import { logger } from '../utils/logger';
 
 export const crmConnector: Connector = {
   async fetch(intent: Intent): Promise<ConnectorResult> {
-    const { startDate, endDate } = resolveDateRange(intent.timeRange);
-    logger.info({ source: 'crm', startDate, endDate }, 'CRM fetch');
+    try {
+      const { startDate, endDate } = resolveDateRange(intent.timeRange);
+      logger.info({ source: 'crm', startDate, endDate }, 'CRM fetch');
 
-    const rows = await prisma.lead.groupBy({
-      by: ['source'],
-      where: {
-        createdAt: {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
+      const rows = await prisma.lead.groupBy({
+        by: ['source'],
+        where: {
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
         },
-      },
-      _count: { id: true },
-    });
+        _count: { id: true },
+      });
 
-    const conversions = await prisma.lead.groupBy({
-      by: ['source'],
-      where: {
-        status: 'converted',
-        createdAt: {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
+      const conversions = await prisma.lead.groupBy({
+        by: ['source'],
+        where: {
+          status: 'converted',
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
         },
-      },
-      _count: { id: true },
-    });
+        _count: { id: true },
+      });
 
-    const conversionMap = Object.fromEntries(
-      conversions.map((c) => [c.source, c._count.id]),
-    );
+      const conversionMap = Object.fromEntries(
+        conversions.map((c) => [c.source, c._count.id]),
+      );
 
-    return {
-      source: 'crm',
-      data: rows.map((r) => ({
-        source: r.source,
-        totalLeads: r._count.id,
-        conversions: conversionMap[r.source ?? ''] ?? 0,
-      })),
-    };
+      return {
+        source: 'crm',
+        data: rows.map((r) => ({
+          source: r.source,
+          totalLeads: r._count.id,
+          conversions: conversionMap[r.source ?? ''] ?? 0,
+        })),
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'CRM unavailable';
+      logger.warn({ err }, 'CRM fetch failed');
+      return { source: 'crm', data: null, error: message };
+    }
   },
 
   async checkStatus() {

@@ -14,9 +14,9 @@ export function errorHandler(
   const isServerError = statusCode >= 500;
 
   if (isServerError) {
-    logger.error({ err, path: req.path, method: req.method }, 'Unhandled error');
+    logger.error({ err, path: req.path, method: req.method, stack: err.stack }, 'Unhandled error');
   } else {
-    logger.warn({ err: err.message, path: req.path, method: req.method }, 'Client error');
+    logger.warn({ err: err.message, path: req.path, method: req.method, stack: err.stack }, 'Client error');
   }
 
   res.status(statusCode).json({
